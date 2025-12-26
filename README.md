@@ -1,24 +1,90 @@
-# Pink and Black Terminal
+Pink_n_Black/
+│
+├── install.sh          # The main script users run to apply the theme/settings
+├── README.md           # Instructions on how to use it
+├── LICENSE             # (Optional) Open source license
+└── configs/            # Folder containing the actual config files
+    ├── .bashrc_custom  # The custom bash settings
+    └── colors.conf     # The color definitions
 
-A pink-on-black Qt desktop terminal app with:
 
-- **Embedded terminal** (QTermWidget if available, otherwise a simple pty-backed terminal)
-- **ChatGPT panel** (uses the OpenAI API)
-- **GitHub repo search**
-- **VLC-based media controls** (optional, via `python-vlc`)
-- **System info panel** (CPU, RAM, kernel)
-- **Lonhro facts** panel
+# #!/bin/bash
 
-The main window uses a **split view** layout:
+# Pink_n_Black - Terminal Customization Script
+# Author: [Your Name]
 
-- **Left**: Terminal
-- **Right**: Tabs for ChatGPT, GitHub, Media, System, Lonhro
+# Define Colors for the Installer Output
+PINK='\\033[1;35m'
+BLACK='\\033[0;30m' # Actually usually dark gray in terminals
+NC='\\033[0m' # No Color
 
-## Requirements
+echo -e "${PINK}---------------------------------${NC}"
+echo -e "${PINK}    Pink_n_Black Installer       ${NC}"
+echo -e "${PINK}---------------------------------${NC}"
 
-Python 3.9+ recommended.
+# 1. Define the target config file (usually .bashrc or .zshrc)
+SHELL_CONFIG="$HOME/.bashrc"
+if [[ "$SHELL" == *"zsh"* ]]; then
+    SHELL_CONFIG="$HOME/.zshrc"
+fi
 
-Install dependencies:
+echo -e "[*] Detected Shell Config: ${SHELL_CONFIG}"
+
+# 2. Create a backup of the user's current config
+if [ -f "$SHELL_CONFIG" ]; then
+    cp "$SHELL_CONFIG" "${SHELL_CONFIG}.backup_$(date +%F_%T)"
+    echo -e "[*] Backup created at ${SHELL_CONFIG}.backup_..."
+else
+    echo -e "[!] No config file found. Creating one."
+    touch "$SHELL_CONFIG"
+fi
+
+# 3. Append the Pink_n_Black logic
+# You can paste the specific logic from the original script here.
+# Below is a standard "Pink and Black" prompt customization.
+
+cat <<EOT >> "$SHELL_CONFIG"
+
+
+# Pink_n_Black
+
+A lightweight terminal customization script that applies a high-contrast Pink and Black theme to your Bash or Zsh shell.
+
+## Features
+- Custom PS1 prompt with Pink identifiers.
+- Auto-backups your existing configuration file.
+- Works on Linux and macOS.
+
+## Installation
+
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/lonhro-pi/Pink_n_Black.git
+   cd Pink_n_Black
+
+chmod +x install.sh
+./install.sh
+
+
+### How to use this to fix your script:
+
+1.  Copy the `install.sh` code above.
+2.  Look at the original code you have. Find the lines that actually change the colors or the prompt (look for `PS1=`, `export`, or hex color codes).
+3.  Paste those specific lines into the section of `install.sh` that says `# 3. Append the Pink_n_Black logic`.
+4.  Upload these files to your GitHub repository.
+
+If you can paste the specific error you were getting with the original script, or paste the raw code here (if it's short), I can debug the specific syntax error for you.
+
+
+
+
+
+# --- PINK_N_BLACK THEME END ---
+EOT
+
+echo -e "${PINK}[*] Installation Complete!${NC}"
+echo -e "Please run: source ${SHELL_CONFIG} OR restart your terminal."
+y
 
 ```bash
 pip install -r requirements.txt
@@ -56,7 +122,7 @@ On first run, the app will create a configuration directory at:
 Recommended `.vscode/launch.json` configuration (already included):
 
 ```json
-{
+CB de l{
   "version": "0.2.0",
   "configurations": [
     {
