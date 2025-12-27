@@ -56,14 +56,7 @@ chmod +x install.sh
 ./install.sh
 
 
-### How to use this to fix your script:
 
-1.  Copy the `install.sh` code above.
-2.  Look at the original code you have. Find the lines that actually change the colors or the prompt (look for `PS1=`, `export`, or hex color codes).
-3.  Paste those specific lines into the section of `install.sh` that says `# 3. Append the Pink_n_Black logic`.
-4.  Upload these files to your GitHub repository.
-
-If you can paste the specific error you were getting with the original script, or paste the raw code here (if it's short), I can debug the specific syntax error for you.
 
 
 
