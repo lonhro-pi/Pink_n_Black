@@ -8,6 +8,18 @@ Pink_n_Black/
     └── colors.conf     # The color definitions
 
 
+
+
+
+
+# The main script users run to apply the theme/settings
+# Instructions on how to use it  LICENSE             
+# (Optional) Open source license
+# Folder containing the actual config files
+# The custom bash settings   
+# The color definitions
+
+
 # #!/bin/bash
 
 # Pink_n_Black - Terminal Customization Script
