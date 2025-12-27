@@ -1,25 +1,3 @@
-Pink_n_Black/
-│
-├── install.sh          # The main script users run to apply the theme/settings
-├── README.md           # Instructions on how to use it
-├── LICENSE             # (Optional) Open source license
-└── configs/            # Folder containing the actual config files
-    ├── .bashrc_custom  # The custom bash settings
-    └── colors.conf     # The color definitions
-
-
-
-
-
-
-# The main script users run to apply the theme/settings
-# Instructions on how to use it  LICENSE             
-# (Optional) Open source license
-# Folder containing the actual config files
-# The custom bash settings   
-# The color definitions
-
-
 # #!/bin/bash
 
 # Pink_n_Black - Terminal Customization Script
@@ -129,27 +107,8 @@ On first run, the app will create a configuration directory at:
 
 - `~/.pinkblack-terminal`
 
-## VS Code Debugging
 
-Recommended `.vscode/launch.json` configuration (already included):
 
-```json
-CB de l{
-  "version": "0.2.0",
-  "configurations": [
-    {
-      "name": "Run Pink and Black Terminal",
-      "type": "python",
-      "request": "launch",
-      "program": "${workspaceFolder}/main.py",
-      "console": "integratedTerminal",
-      "justMyCode": true
-    }
-  ]
-}
-```
-
-Open the folder in VS Code and use **Run and Debug → Run Pink and Black Terminal**.
 
 ## License
 
