@@ -11,7 +11,7 @@ Pink_n_Black/
 # #!/bin/bash
 
 # Pink_n_Black - Terminal Customization Script
-# Author: [Your Name]
+# Author: [Roy and Leon Daley]
 
 # Define Colors for the Installer Output
 PINK='\\033[1;35m'
