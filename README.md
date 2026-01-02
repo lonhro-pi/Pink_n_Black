@@ -3,6 +3,12 @@
 # Pink_n_Black - Terminal Customization Script
 # Author: [Roy and Leon Daley]
 
+depends:
+
+pip install pyinstaller
+
+pyinstaller --noconfirm --onedir --windowed --add-data "lonhro_facts.json:." "main.py"
+
 # Define Colors for the Installer Output
 PINK='\\033[1;35m'
 BLACK='\\033[0;30m' # Actually usually dark gray in terminals
