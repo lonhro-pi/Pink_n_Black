@@ -19,8 +19,13 @@ except: HAS_QTERMWIDGET = False
 HAS_VLC = False
 try:
     import vlc
-    HAS_VLC = True
-except: HAS_VLC = False
+    # Test that libvlc is actually available by creating an instance
+    _test_instance = vlc.Instance()
+    if _test_instance:
+        HAS_VLC = True
+        del _test_instance
+except:
+    HAS_VLC = False
 
 # Constants & Paths
 BG, FG, ACCENT = "#000000", "#FFD6F5", "#FF1493"
@@ -100,8 +105,16 @@ class VLCPanel(QtWidgets.QWidget):
         self.open_btn.clicked.connect(self.open_file)
         self.play_btn.clicked.connect(self.toggle)
         self.cam_btn.clicked.connect(self.webcam)
+        
+        if not HAS_VLC:
+            self.open_btn.setEnabled(False)
+            self.play_btn.setEnabled(False)
+            self.cam_btn.setEnabled(False)
+            l.addWidget(QtWidgets.QLabel("VLC not available. Install python-vlc and VLC."))
 
     def open_file(self):
+        if not self.instance:
+            return
         path, _ = QtWidgets.QFileDialog.getOpenFileName(self, "Select Media")
         if path: self.player = self.instance.media_player_new(path)
 
