@@ -279,7 +279,8 @@ class MediaPanel(QWidget):
         self.status_label.setText(f"Loaded: {os.path.basename(path)}")
 
 
-        if path.lower().endswith(video_extensions):
+        if path.lower().endswith((".mp4", ".mov", ".avi", ".mkv")):
+
         self.video_widget.show()
         else:
         self.video_widget.hide()
