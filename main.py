@@ -281,6 +281,6 @@ class MediaPanel(QWidget):
 
         if path.lower().endswith((".mp4", ".mov", ".avi", ".mkv")):
 
-        self.video_widget.show()
+            self.video_widget.show()
         else:
-        self.video_widget.hide()
+            self.video_widget.hide()
