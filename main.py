@@ -235,6 +235,11 @@ class MediaPanel(QWidget):
         self.audio_output = QAudioOutput()
         self.player.setAudioOutput(self.audio_output)
 
+
+        self.audio_placeholder = QLabel(self)
+        self.audio_placeholder.setPixmap(QPixmap("/home/lonhro/Downloads/pink_black_logo.jpeg"))
+        self.audio_placeholder.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.audio_placeholder.hide() # Hide it by default
         self.video_widget = QVideoWidget()
         self.player.setVideoOutput(self.video_widget)
         self.video_widget.hide()  # shown only when video is loaded
@@ -278,9 +283,12 @@ class MediaPanel(QWidget):
         self.player.setSource(url)
         self.status_label.setText(f"Loaded: {os.path.basename(path)}")
 
+        # Check if the file is a video
+        is_video = path.lower().endswith((".mp4", ".avi", ".mkv", ".mov", ".wmv"))
 
-        if path.lower().endswith((".mp4", ".mov", ".avi", ".mkv")):
-
+        if is_video:
             self.video_widget.show()
+            self.audio_placeholder.hide()
         else:
             self.video_widget.hide()
+            self.audio_placeholder.show()
