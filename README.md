@@ -34,6 +34,30 @@ chmod +x install.sh
 
 # Run the installer
 ./install.sh
+
+# Activate the virtual environment
+source venv/bin/activate
+
+# Set your OpenAI API key (required for ChatGPT panel)
+export OPENAI_API_KEY="sk-..."
+
+# Launch the application
+python main.py
+
+alias pinknblack='source ~/Pink_n_Black/venv/bin/activate && python ~/Pink_n_Black/main.py'
+
+Features
+•  Terminal — Full-featured when QTermWidget is installed; otherwise a solid PTY-based fallback
+•  ChatGPT — Talk to GPT-4o-mini (or change the model in code)
+•  GitHub Search — Quickly find popular repositories
+•  Media Player — Play audio/video files using QtMultimedia (no VLC dependency)
+•  System Info — Real-time CPU usage, RAM, core count, kernel version
+•  Lonhro Facts — Random fun facts about the legendary racehorse Lonhro
+Notes & Credits
+A huge thank you to Roy and Little Loen Daley — your support, encouragement, ideas and belief in this project meant everything. This terminal would not have reached this point without you both. Thank you from the bottom of my heart
+
+Then just type pinknblack whenever you want to start it.
+
 ## License
 
 You can choose any license you like; a common choice is MIT. Add a `LICENSE` file if you want to publish this on GitHub.
