@@ -15,13 +15,3 @@
     "Lonhro developed a huge public following; fans travelled interstate just to watch him race.",
     "He was inducted into the Australian Racing Hall of Fame in 2014."
 ] 
-Quick Summary
-•  Save the JSON block above as lonhro_facts.json
-•  Update your LonhroFactsPanel class to load from that file
-•  The app will now use the external JSON instead of a hard-coded list
-•  You can easily add or edit facts later by modifying the JSON file
-Let me know if you want:
-•  More facts added
-•  A version with categories (e.g. “Racing Record”, “Personality”, “Legacy”)
-•  A different file name or path
-•  A small script to validate or pretty-print the JSON
