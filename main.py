@@ -272,9 +272,14 @@ class MediaPanel(QWidget):
         if not path:
             return
 
+        video_extensions = (".mp4", ".avi", ".mkv", ".mov", ".wmv")
+
         url = QUrl.fromLocalFile(path)
         self.player.setSource(url)
         self.status_label.setText(f"Loaded: {os.path.basename(path)}")
 
-        # Show video widget only if it's likely video
-        if path.lower().endswith(()".mp4
+
+        if path.lower().endswith(video_extensions):
+        self.video_widget.show()
+        else:
+        self.video_widget.hide()
