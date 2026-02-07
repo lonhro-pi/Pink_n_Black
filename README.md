@@ -54,7 +54,7 @@ Features
 •  System Info — Real-time CPU usage, RAM, core count, kernel version
 •  Lonhro Facts — Random fun facts about the legendary racehorse Lonhro
 Notes & Credits
-A huge thank you to Roy and Little Loen Daley — your support, encouragement, ideas and belief in this project meant everything. This terminal would not have reached this point without you both. Thank you from the bottom of my heart
+A huge thank you to Roy and Little Leon Daley — your support, encouragement, ideas and belief in this project meant everything. This terminal would not have reached this point without you both. Thank you from the bottom of my heart
 
 Then just type pinknblack whenever you want to start it.
 
