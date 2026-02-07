@@ -284,8 +284,8 @@ class MediaPanel(QWidget):
         self.status_label.setText(f"Loaded: {os.path.basename(path)}")
 
         # Check if the file is a video
-        is_video = path.lower().endswith((".mp4", ".avi", ".mkv", ".mov", ".wmv"))
-
+        video_formats = (".mp4", ".avi", ".mkv", ".mov", ".wmv")
+        is_video = path.lower().endswith(video_formats)
         if is_video:
             self.video_widget.show()
             self.audio_placeholder.hide()
