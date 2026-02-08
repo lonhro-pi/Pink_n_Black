@@ -156,7 +156,7 @@ class ChatGPTPanel(QWidget):
         def update():
             self.history.appendPlainText(f"\nAssistant: {text}")
             self.history.ensureCursorVisible()
-        QApplication.postEvent(self, update)
+        QTimer.singleShot(0, update)
 
 # ────────────────────────────────────────────────
 #  GITHUB SEARCH PANEL
@@ -215,12 +215,12 @@ class GitHubPanel(QWidget):
                     desc = repo["description"] or "No description"
                     desc = (desc[:80] + "...") if len(desc) > 80 else desc
                     self.results.addItem(f"{name}  ★ {stars:,}  —  {desc}")
-            QApplication.postEvent(self, update)
+            QTimer.singleShot(0, update)
         except Exception as e:
             def err():
                 self.results.clear()
                 self.results.addItem(f"Error: {str(e)}")
-            QApplication.postEvent(self, err)
+            QTimer.singleShot(0, err)
 
 # ────────────────────────────────────────────────
 #  MEDIA PLAYER PANEL (QtMultimedia)
@@ -277,7 +277,7 @@ class MediaPanel(QWidget):
         self.status_label.setText(f"Loaded: {os.path.basename(path)}")
 
         # Show video widget only if it's likely video
-        if path.lower().endswith()"(.mp4, .mkv, .avi))":
+        if path.lower().endswith((".mp4", ".mkv", ".avi")):
             self.video_widget.show()
         else:
             self.video_widget.hide()
