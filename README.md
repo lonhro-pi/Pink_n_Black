@@ -35,6 +35,8 @@ chmod +x install.sh
 # Run the installer
 ./install.sh
 
+pip install -r requirements.txt
+
 # Activate the virtual environment
 source venv/bin/activate
 
