@@ -235,11 +235,6 @@ class MediaPanel(QWidget):
         self.audio_output = QAudioOutput()
         self.player.setAudioOutput(self.audio_output)
 
-
-        self.audio_placeholder = QLabel(self)
-        self.audio_placeholder.setPixmap(QPixmap("/home/lonhro/Downloads/pink_black_logo.jpeg"))
-        self.audio_placeholder.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.audio_placeholder.hide() # Hide it by default
         self.video_widget = QVideoWidget()
         self.player.setVideoOutput(self.video_widget)
         self.video_widget.hide()  # shown only when video is loaded
@@ -277,18 +272,133 @@ class MediaPanel(QWidget):
         if not path:
             return
 
-        video_extensions = (".mp4", ".avi", ".mkv", ".mov", ".wmv")
-
         url = QUrl.fromLocalFile(path)
         self.player.setSource(url)
         self.status_label.setText(f"Loaded: {os.path.basename(path)}")
 
-        # Check if the file is a video
-        video_formats = (".mp4", ".avi", ".mkv", ".mov", ".wmv")
-        is_video = path.lower().endswith(video_formats)
-        if is_video:
+        # Show video widget only if it's likely video
+        if path.lower().endswith((".mp4", ".mkv", ".avi")):
             self.video_widget.show()
-            self.audio_placeholder.hide()
         else:
             self.video_widget.hide()
-            self.audio_placeholder.show()
+
+# ────────────────────────────────────────────────
+#  SYSTEM INFO PANEL
+# ────────────────────────────────────────────────
+
+class SystemInfoPanel(QWidget):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.layout = QVBoxLayout(self)
+
+        self.label = QLabel()
+        self.label.setStyleSheet(f"color: {FG_COLOR}; font-family: Monospace;")
+        self.layout.addWidget(QLabel("System Information"))
+        self.layout.addWidget(self.label)
+
+        self.timer = QTimer(self)
+        self.timer.timeout.connect(self.update_info)
+        self.timer.start(3000)  # update every 3 seconds
+
+        self.update_info()
+
+    def update_info(self):
+        cpu_percent = psutil.cpu_percent(interval=None)
+        cpu_count = psutil.cpu_count(logical=True)
+        mem = psutil.virtual_memory()
+        uname = os.uname()
+
+        text = (
+            f"Kernel:      {uname.release}\n"
+            f"CPU cores:   {cpu_count} (logical)\n"
+            f"CPU usage:   {cpu_percent}%\n"
+            f"RAM total:   {mem.total // (1024**3):.1f} GB\n"
+            f"RAM used:    {mem.percent}%  ({mem.used // (1024**2):,} MB)"
+        )
+        self.label.setText(text)
+
+# ────────────────────────────────────────────────
+#  LONHRO FACTS PANEL
+# ────────────────────────────────────────────────
+
+class LonhroFactsPanel(QWidget):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.layout = QVBoxLayout(self)
+
+        self.label = QLabel("Lonhro Fact")
+        self.label.setStyleSheet(f"color: {ACCENT_COLOR}; font-weight: bold;")
+        self.fact_text = QLabel()
+        self.fact_text.setWordWrap(True)
+        self.fact_text.setStyleSheet(f"color: {FG_COLOR};")
+
+        self.next_btn = QPushButton("Another Fact")
+        self.next_btn.clicked.connect(self.show_random_fact)
+
+        self.layout.addWidget(self.label)
+        self.layout.addWidget(self.fact_text)
+        self.layout.addWidget(self.next_btn)
+
+        self.show_random_fact()
+
+    def show_random_fact(self):
+        fact = random.choice(LONHRO_FACTS)
+        self.fact_text.setText(fact)
+
+# ────────────────────────────────────────────────
+#  MAIN WINDOW
+# ────────────────────────────────────────────────
+
+class MainWindow(QMainWindow):
+    def __init__(self):
+        super().__init__()
+        self.setWindowTitle("Pink_n_Black")
+        self.resize(1100, 700)
+
+        # Apply theme
+        palette = QPalette()
+        palette.setColor(QPalette.Window, QColor(BG_COLOR))
+        palette.setColor(QPalette.WindowText, QColor(FG_COLOR))
+        palette.setColor(QPalette.Base, QColor("#0F0F0F"))
+        palette.setColor(QPalette.AlternateBase, QColor("#111111"))
+        palette.setColor(QPalette.Text, QColor(FG_COLOR))
+        palette.setColor(QPalette.Button, QColor(ACCENT_COLOR))
+        palette.setColor(QPalette.ButtonText, QColor("white"))
+        self.setPalette(palette)
+
+        # Main splitter
+        splitter = QSplitter(Qt.Horizontal)
+        self.setCentralWidget(splitter)
+
+        # Left: Terminal
+        self.terminal = TerminalWidget()
+        splitter.addWidget(self.terminal)
+
+        # Right: Tabs
+        tabs = QTabWidget()
+        tabs.addTab(ChatGPTPanel(), "ChatGPT")
+        tabs.addTab(GitHubPanel(), "GitHub")
+        tabs.addTab(MediaPanel(), "Media")
+        tabs.addTab(SystemInfoPanel(), "System")
+        tabs.addTab(LonhroFactsPanel(), "Lonhro")
+
+        splitter.addWidget(tabs)
+
+        # Give more space to terminal
+        splitter.setSizes([600, 500])
+
+    def closeEvent(self, event):
+        # Optional: save session or settings here
+        super().closeEvent(event)
+
+# ────────────────────────────────────────────────
+#  ENTRY POINT
+# ────────────────────────────────────────────────
+
+if __name__ == "__main__":
+    app = QApplication(sys.argv)
+    app.setStyle("Fusion")  # cleaner look on Linux
+
+    window = MainWindow()
+    window.show()
+    sys.exit(app.exec())
