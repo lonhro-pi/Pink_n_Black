@@ -1,2 +1,42 @@
+# Python bytecode and caches
 __pycache__/
-*.pyc
+*.py[cod]
+*.pyo
+*.pyd
+
+# Virtual environments
+venv/
+.venv/
+env/
+ENV/
+
+# Qt/PySide6 build artifacts
+build/
+dist/
+*.pro.user
+*.qmlc
+*.jsc
+moc_*.cpp
+qrc_*.cpp
+ui_*.h
+
+# IDE/editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# Logs and temp files
+*.log
+*.tmp
+*.bak
+
+# Environment and secrets
+.env
+*.env
+
+# Other common ignores
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
