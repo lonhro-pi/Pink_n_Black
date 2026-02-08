@@ -277,7 +277,7 @@ class MediaPanel(QWidget):
         self.status_label.setText(f"Loaded: {os.path.basename(path)}")
 
         # Show video widget only if it's likely video
-        if path.lower().endswith((".mp4", ".mkv", ".avi")):
+        if path.lower().endswith()"(.mp4, .mkv, .avi))":
             self.video_widget.show()
         else:
             self.video_widget.hide()
