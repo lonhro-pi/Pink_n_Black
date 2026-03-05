@@ -463,8 +463,14 @@ Type commands below. Special commands:
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# AI CHAT PANEL
+# AI CHAT PANEL (Powered by Puter.ai - FREE)
 # ═══════════════════════════════════════════════════════════════════════════════
+
+try:
+    from puter import AI
+    HAS_PUTER = True
+except ImportError:
+    HAS_PUTER = False
 
 class AIChatPanel(QtWidgets.QWidget):
     def __init__(self):
@@ -477,9 +483,32 @@ class AIChatPanel(QtWidgets.QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(10)
 
+        header = QtWidgets.QLabel("🤖 AI Chat - FREE (Powered by Puter.ai)")
+        header.setStyleSheet(f"color: {ACCENT}; font-weight: bold; font-size: 12px;")
+        
+        self.model_combo = QtWidgets.QComboBox()
+        self.model_combo.addItems(["gpt-4o-mini", "claude-3-5-sonnet", "gpt-4o", "gemini-1.5-pro"])
+        self.model_combo.setStyleSheet(f"""
+            QComboBox {{
+                background: {BG_DARKER};
+                color: {FG};
+                border: 1px solid #3D2030;
+                border-radius: 4px;
+                padding: 5px;
+            }}
+            QComboBox::drop-down {{
+                border: none;
+            }}
+            QComboBox QAbstractItemView {{
+                background: {BG_DARKER};
+                color: {FG};
+                selection-background-color: {ACCENT};
+            }}
+        """)
+
         self.chat_display = QtWidgets.QPlainTextEdit()
         self.chat_display.setReadOnly(True)
-        self.chat_display.setPlaceholderText("Chat with AI powered by GPT-4o-mini...")
+        self.chat_display.setPlaceholderText("Chat with AI - completely FREE, no API key needed!")
 
         self.input_field = QtWidgets.QLineEdit()
         self.input_field.setPlaceholderText("Type your message...")
@@ -492,9 +521,11 @@ class AIChatPanel(QtWidgets.QWidget):
         input_layout.addWidget(self.input_field, stretch=1)
         input_layout.addWidget(self.send_btn)
 
-        self.status = QtWidgets.QLabel("")
+        self.status = QtWidgets.QLabel("Ready - No API key required!")
         self.status.setStyleSheet(f"color: {FG_MUTED}; font-size: 11px;")
 
+        layout.addWidget(header)
+        layout.addWidget(self.model_combo)
         layout.addWidget(self.chat_display, stretch=1)
         layout.addLayout(input_layout)
         layout.addWidget(self.status)
@@ -504,74 +535,62 @@ class AIChatPanel(QtWidgets.QWidget):
         if not message:
             return
 
-        api_key = os.environ.get("OPENAI_API_KEY")
-        if not api_key:
-            self.chat_display.appendPlainText("\n⚠️ Error: OPENAI_API_KEY not set")
-            self.chat_display.appendPlainText("Set it with: export OPENAI_API_KEY='your-key'")
-            return
-
         self.input_field.clear()
         self.chat_display.appendPlainText(f"\n👤 You: {message}")
         self.messages.append({"role": "user", "content": message})
         self.status.setText("AI is thinking...")
         self.send_btn.setEnabled(False)
 
-        threading.Thread(target=self._call_api, args=(api_key,), daemon=True).start()
+        model = self.model_combo.currentText()
+        threading.Thread(target=self._call_puter_ai, args=(message, model), daemon=True).start()
 
-    def _call_api(self, api_key):
+    def _call_puter_ai(self, message, model):
         try:
-            response = requests.post(
-                "https://api.openai.com/v1/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {api_key}",
-                    "Content-Type": "application/json"
-                },
-                json={
-                    "model": "gpt-4o-mini",
-                    "messages": self.messages,
-                    "max_tokens": 1000
-                },
-                timeout=30
-            )
-
-            if response.status_code == 200:
-                data = response.json()
-                ai_message = data["choices"][0]["message"]["content"]
-                self.messages.append({"role": "assistant", "content": ai_message})
-
-                QtCore.QMetaObject.invokeMethod(
-                    self.chat_display, "appendPlainText",
-                    QtCore.Qt.QueuedConnection,
-                    QtCore.Q_ARG(str, f"\n🤖 AI: {ai_message}")
-                )
-                QtCore.QMetaObject.invokeMethod(
-                    self.status, "setText",
-                    QtCore.Qt.QueuedConnection,
-                    QtCore.Q_ARG(str, "")
-                )
+            if HAS_PUTER:
+                ai = AI()
+                response = ai.chat(message, model=model)
+                ai_message = response if isinstance(response, str) else str(response)
             else:
-                error = response.json().get("error", {}).get("message", "Unknown error")
-                QtCore.QMetaObject.invokeMethod(
-                    self.chat_display, "appendPlainText",
-                    QtCore.Qt.QueuedConnection,
-                    QtCore.Q_ARG(str, f"\n⚠️ Error: {error}")
+                response = requests.post(
+                    "https://api.puter.com/ai/chat",
+                    json={"message": message, "model": model},
+                    headers={"Content-Type": "application/json"},
+                    timeout=60
                 )
+                if response.status_code == 200:
+                    data = response.json()
+                    ai_message = data.get("response", data.get("message", str(data)))
+                else:
+                    ai_message = f"Error: {response.status_code} - {response.text}"
+
+            self.messages.append({"role": "assistant", "content": ai_message})
+
+            QtCore.QMetaObject.invokeMethod(
+                self.chat_display, "appendPlainText",
+                QtCore.Qt.QueuedConnection,
+                QtCore.Q_ARG(str, f"\n🤖 AI ({model}): {ai_message}")
+            )
+            QtCore.QMetaObject.invokeMethod(
+                self.status, "setText",
+                QtCore.Qt.QueuedConnection,
+                QtCore.Q_ARG(str, "Ready - No API key required!")
+            )
         except Exception as e:
             QtCore.QMetaObject.invokeMethod(
                 self.chat_display, "appendPlainText",
                 QtCore.Qt.QueuedConnection,
                 QtCore.Q_ARG(str, f"\n⚠️ Error: {e}")
             )
+            QtCore.QMetaObject.invokeMethod(
+                self.status, "setText",
+                QtCore.Qt.QueuedConnection,
+                QtCore.Q_ARG(str, f"Error occurred")
+            )
         finally:
             QtCore.QMetaObject.invokeMethod(
                 self.send_btn, "setEnabled",
                 QtCore.Qt.QueuedConnection,
                 QtCore.Q_ARG(bool, True)
-            )
-            QtCore.QMetaObject.invokeMethod(
-                self.status, "setText",
-                QtCore.Qt.QueuedConnection,
-                QtCore.Q_ARG(str, "")
             )
 
 
