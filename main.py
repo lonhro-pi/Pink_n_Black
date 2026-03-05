@@ -198,6 +198,8 @@ class TerminalWidget(QtWidgets.QWidget):
         super().__init__()
         layout = QtWidgets.QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(5)
+        
         if HAS_QTERMWIDGET:
             self.term = QTermWidget()
             layout.addWidget(self.term)
@@ -210,21 +212,127 @@ class TerminalWidget(QtWidgets.QWidget):
                 font-size: 13px;
                 border: 1px solid #3D2030;
                 border-radius: 6px;
+                padding: 10px;
             """)
             layout.addWidget(self.output)
-            self._start_shell()
+            
+            input_layout = QtWidgets.QHBoxLayout()
+            self.prompt_label = QtWidgets.QLabel(f"{os.getcwd()} $")
+            self.prompt_label.setStyleSheet(f"color: {ACCENT}; font-family: 'Consolas', monospace; font-weight: bold;")
+            self.cmd_input = QtWidgets.QLineEdit()
+            self.cmd_input.setStyleSheet(f"""
+                background-color: {BG_DARKER};
+                color: {FG};
+                font-family: 'Consolas', 'Monaco', monospace;
+                font-size: 13px;
+                border: 1px solid #3D2030;
+                border-radius: 6px;
+                padding: 8px;
+            """)
+            self.cmd_input.setPlaceholderText("Enter command...")
+            self.cmd_input.returnPressed.connect(self.run_command)
+            
+            input_layout.addWidget(self.prompt_label)
+            input_layout.addWidget(self.cmd_input)
+            layout.addLayout(input_layout)
+            
+            self.process = None
+            self.cwd = os.getcwd()
+            self.command_history = []
+            self.history_index = -1
+            self.cmd_input.installEventFilter(self)
+            
+            self.output.appendPlainText(f"LONHRO Terminal - Type commands below\n{'='*50}\n")
 
-    def _start_shell(self):
-        import pty
-        master, slave = pty.openpty()
-        subprocess.Popen([os.environ.get("SHELL", "/bin/bash")], stdin=slave, stdout=slave, stderr=slave)
-        def reader():
-            while True:
-                data = os.read(master, 1024).decode(errors="ignore")
-                if not data:
-                    break
-                QtCore.QMetaObject.invokeMethod(self.output, "appendPlainText", QtCore.Qt.QueuedConnection, QtCore.Q_ARG(str, data))
-        threading.Thread(target=reader, daemon=True).start()
+    def eventFilter(self, obj, event):
+        if obj == self.cmd_input and event.type() == QtCore.QEvent.KeyPress:
+            if event.key() == QtCore.Qt.Key_Up:
+                if self.command_history and self.history_index < len(self.command_history) - 1:
+                    self.history_index += 1
+                    self.cmd_input.setText(self.command_history[-(self.history_index + 1)])
+                return True
+            elif event.key() == QtCore.Qt.Key_Down:
+                if self.history_index > 0:
+                    self.history_index -= 1
+                    self.cmd_input.setText(self.command_history[-(self.history_index + 1)])
+                elif self.history_index == 0:
+                    self.history_index = -1
+                    self.cmd_input.clear()
+                return True
+        return super().eventFilter(obj, event)
+
+    def run_command(self):
+        cmd = self.cmd_input.text().strip()
+        if not cmd:
+            return
+        
+        self.command_history.append(cmd)
+        self.history_index = -1
+        self.cmd_input.clear()
+        
+        self.output.appendPlainText(f"\n{self.cwd} $ {cmd}")
+        
+        if cmd.startswith("cd "):
+            path = cmd[3:].strip()
+            try:
+                if path == "~":
+                    path = str(Path.home())
+                elif path.startswith("~/"):
+                    path = str(Path.home() / path[2:])
+                elif not os.path.isabs(path):
+                    path = os.path.join(self.cwd, path)
+                path = os.path.normpath(path)
+                if os.path.isdir(path):
+                    self.cwd = path
+                    os.chdir(path)
+                    self.prompt_label.setText(f"{self.cwd} $")
+                else:
+                    self.output.appendPlainText(f"cd: no such directory: {path}")
+            except Exception as e:
+                self.output.appendPlainText(f"cd: {e}")
+            return
+        
+        if cmd == "clear":
+            self.output.clear()
+            return
+        
+        if cmd == "exit":
+            QtWidgets.QApplication.quit()
+            return
+        
+        threading.Thread(target=self._execute_command, args=(cmd,), daemon=True).start()
+
+    def _execute_command(self, cmd):
+        try:
+            result = subprocess.run(
+                cmd,
+                shell=True,
+                cwd=self.cwd,
+                capture_output=True,
+                text=True,
+                timeout=30
+            )
+            output = result.stdout
+            if result.stderr:
+                output += result.stderr
+            if output:
+                QtCore.QMetaObject.invokeMethod(
+                    self.output, "appendPlainText",
+                    QtCore.Qt.QueuedConnection,
+                    QtCore.Q_ARG(str, output.rstrip())
+                )
+        except subprocess.TimeoutExpired:
+            QtCore.QMetaObject.invokeMethod(
+                self.output, "appendPlainText",
+                QtCore.Qt.QueuedConnection,
+                QtCore.Q_ARG(str, "Command timed out after 30 seconds")
+            )
+        except Exception as e:
+            QtCore.QMetaObject.invokeMethod(
+                self.output, "appendPlainText",
+                QtCore.Qt.QueuedConnection,
+                QtCore.Q_ARG(str, f"Error: {e}")
+            )
 
 
 class ChatGPTPanel(QtWidgets.QWidget):
@@ -274,36 +382,112 @@ class GitHubPanel(QtWidgets.QWidget):
         layout = QtWidgets.QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         
-        self.repo_input = QtWidgets.QLineEdit(placeholderText="owner/repo")
-        self.fetch_btn = QtWidgets.QPushButton("Fetch Info")
+        self.repo_input = QtWidgets.QLineEdit(placeholderText="owner/repo (e.g. torvalds/linux)")
+        self.repo_input.returnPressed.connect(self.fetch_repo)
+        
+        btn_layout = QtWidgets.QHBoxLayout()
+        self.fetch_btn = QtWidgets.QPushButton("Repo Info")
+        self.issues_btn = QtWidgets.QPushButton("Issues")
+        self.commits_btn = QtWidgets.QPushButton("Commits")
+        btn_layout.addWidget(self.fetch_btn)
+        btn_layout.addWidget(self.issues_btn)
+        btn_layout.addWidget(self.commits_btn)
+        
         self.info_list = QtWidgets.QListWidget()
+        self.status_label = QtWidgets.QLabel("")
+        self.status_label.setStyleSheet(f"color: {FG_MUTED}; font-size: 11px;")
         
         layout.addWidget(self.repo_input)
-        layout.addWidget(self.fetch_btn)
+        layout.addLayout(btn_layout)
         layout.addWidget(self.info_list)
+        layout.addWidget(self.status_label)
         
         self.fetch_btn.clicked.connect(self.fetch_repo)
+        self.issues_btn.clicked.connect(self.fetch_issues)
+        self.commits_btn.clicked.connect(self.fetch_commits)
 
     def fetch_repo(self):
         repo = self.repo_input.text().strip()
         if not repo:
+            self.status_label.setText("Enter a repository (owner/repo)")
             return
         self.info_list.clear()
-        threading.Thread(target=self._fetch, args=(repo,), daemon=True).start()
+        self.status_label.setText("Fetching repository info...")
+        threading.Thread(target=self._fetch_repo, args=(repo,), daemon=True).start()
 
-    def _fetch(self, repo):
+    def _fetch_repo(self, repo):
         try:
             r = requests.get(f"https://api.github.com/repos/{repo}", timeout=10)
+            if r.status_code == 404:
+                QtCore.QMetaObject.invokeMethod(self.info_list, "addItem", QtCore.Qt.QueuedConnection, QtCore.Q_ARG(str, "Repository not found"))
+                return
             data = r.json()
             items = [
-                f"Name: {data.get('name', 'N/A')}",
-                f"Stars: {data.get('stargazers_count', 0)}",
-                f"Forks: {data.get('forks_count', 0)}",
-                f"Language: {data.get('language', 'N/A')}",
-                f"Open Issues: {data.get('open_issues_count', 0)}",
+                f"📁 Name: {data.get('name', 'N/A')}",
+                f"📝 Description: {data.get('description', 'No description')[:50]}",
+                f"⭐ Stars: {data.get('stargazers_count', 0):,}",
+                f"🍴 Forks: {data.get('forks_count', 0):,}",
+                f"👀 Watchers: {data.get('watchers_count', 0):,}",
+                f"💻 Language: {data.get('language', 'N/A')}",
+                f"🐛 Open Issues: {data.get('open_issues_count', 0):,}",
+                f"📅 Created: {data.get('created_at', 'N/A')[:10]}",
+                f"🔄 Updated: {data.get('updated_at', 'N/A')[:10]}",
+                f"📜 License: {data.get('license', {}).get('name', 'N/A') if data.get('license') else 'N/A'}",
             ]
             for item in items:
                 QtCore.QMetaObject.invokeMethod(self.info_list, "addItem", QtCore.Qt.QueuedConnection, QtCore.Q_ARG(str, item))
+            QtCore.QMetaObject.invokeMethod(self.status_label, "setText", QtCore.Qt.QueuedConnection, QtCore.Q_ARG(str, f"Loaded: {repo}"))
+        except Exception as e:
+            QtCore.QMetaObject.invokeMethod(self.info_list, "addItem", QtCore.Qt.QueuedConnection, QtCore.Q_ARG(str, f"Error: {e}"))
+            QtCore.QMetaObject.invokeMethod(self.status_label, "setText", QtCore.Qt.QueuedConnection, QtCore.Q_ARG(str, "Failed to fetch"))
+
+    def fetch_issues(self):
+        repo = self.repo_input.text().strip()
+        if not repo:
+            self.status_label.setText("Enter a repository first")
+            return
+        self.info_list.clear()
+        self.status_label.setText("Fetching issues...")
+        threading.Thread(target=self._fetch_issues, args=(repo,), daemon=True).start()
+
+    def _fetch_issues(self, repo):
+        try:
+            r = requests.get(f"https://api.github.com/repos/{repo}/issues?state=open&per_page=10", timeout=10)
+            issues = r.json()
+            if not issues:
+                QtCore.QMetaObject.invokeMethod(self.info_list, "addItem", QtCore.Qt.QueuedConnection, QtCore.Q_ARG(str, "No open issues"))
+                return
+            for issue in issues[:10]:
+                title = issue.get('title', 'No title')[:40]
+                number = issue.get('number', '?')
+                user = issue.get('user', {}).get('login', 'unknown')
+                QtCore.QMetaObject.invokeMethod(self.info_list, "addItem", QtCore.Qt.QueuedConnection, QtCore.Q_ARG(str, f"#{number} {title}... (@{user})"))
+            QtCore.QMetaObject.invokeMethod(self.status_label, "setText", QtCore.Qt.QueuedConnection, QtCore.Q_ARG(str, f"Showing {len(issues[:10])} issues"))
+        except Exception as e:
+            QtCore.QMetaObject.invokeMethod(self.info_list, "addItem", QtCore.Qt.QueuedConnection, QtCore.Q_ARG(str, f"Error: {e}"))
+
+    def fetch_commits(self):
+        repo = self.repo_input.text().strip()
+        if not repo:
+            self.status_label.setText("Enter a repository first")
+            return
+        self.info_list.clear()
+        self.status_label.setText("Fetching commits...")
+        threading.Thread(target=self._fetch_commits, args=(repo,), daemon=True).start()
+
+    def _fetch_commits(self, repo):
+        try:
+            r = requests.get(f"https://api.github.com/repos/{repo}/commits?per_page=10", timeout=10)
+            commits = r.json()
+            if not commits:
+                QtCore.QMetaObject.invokeMethod(self.info_list, "addItem", QtCore.Qt.QueuedConnection, QtCore.Q_ARG(str, "No commits found"))
+                return
+            for commit in commits[:10]:
+                msg = commit.get('commit', {}).get('message', 'No message').split('\n')[0][:35]
+                sha = commit.get('sha', '?')[:7]
+                author = commit.get('commit', {}).get('author', {}).get('name', 'unknown')[:15]
+                QtCore.QMetaObject.invokeMethod(self.info_list, "addItem", QtCore.Qt.QueuedConnection, QtCore.Q_ARG(str, f"{sha} {msg}... ({author})"))
+            QtCore.QMetaObject.invokeMethod(self.status_label, "setText", QtCore.Qt.QueuedConnection, QtCore.Q_ARG(str, f"Showing {len(commits[:10])} commits"))
         except Exception as e:
             QtCore.QMetaObject.invokeMethod(self.info_list, "addItem", QtCore.Qt.QueuedConnection, QtCore.Q_ARG(str, f"Error: {e}"))
 
@@ -315,25 +499,72 @@ class SystemInfoPanel(QtWidgets.QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         
         self.info_list = QtWidgets.QListWidget()
+        
+        btn_layout = QtWidgets.QHBoxLayout()
         self.refresh_btn = QtWidgets.QPushButton("Refresh")
+        self.auto_refresh = QtWidgets.QCheckBox("Auto (5s)")
+        self.auto_refresh.setStyleSheet(f"color: {FG};")
+        btn_layout.addWidget(self.refresh_btn)
+        btn_layout.addWidget(self.auto_refresh)
+        btn_layout.addStretch()
         
         layout.addWidget(self.info_list)
-        layout.addWidget(self.refresh_btn)
+        layout.addLayout(btn_layout)
         
         self.refresh_btn.clicked.connect(self.refresh)
+        self.auto_refresh.toggled.connect(self.toggle_auto_refresh)
+        
+        self.timer = QtCore.QTimer(self)
+        self.timer.timeout.connect(self.refresh)
+        
         self.refresh()
+
+    def toggle_auto_refresh(self, checked):
+        if checked:
+            self.timer.start(5000)
+        else:
+            self.timer.stop()
 
     def refresh(self):
         self.info_list.clear()
-        cpu = psutil.cpu_percent(interval=0.1)
+        
+        cpu_percent = psutil.cpu_percent(interval=0.1)
+        cpu_count = psutil.cpu_count()
+        cpu_freq = psutil.cpu_freq()
+        
         mem = psutil.virtual_memory()
+        swap = psutil.swap_memory()
         disk = psutil.disk_usage('/')
         
-        self.info_list.addItem(f"CPU Usage: {cpu}%")
-        self.info_list.addItem(f"Memory: {mem.percent}% ({mem.used // (1024**3)}GB / {mem.total // (1024**3)}GB)")
-        self.info_list.addItem(f"Disk: {disk.percent}% ({disk.used // (1024**3)}GB / {disk.total // (1024**3)}GB)")
-        self.info_list.addItem(f"Platform: {sys.platform}")
-        self.info_list.addItem(f"Python: {sys.version.split()[0]}")
+        net = psutil.net_io_counters()
+        
+        boot_time = datetime.fromtimestamp(psutil.boot_time())
+        uptime = datetime.now() - boot_time
+        
+        self.info_list.addItem("═══ CPU ═══")
+        self.info_list.addItem(f"  Usage: {cpu_percent}%")
+        self.info_list.addItem(f"  Cores: {cpu_count}")
+        if cpu_freq:
+            self.info_list.addItem(f"  Frequency: {cpu_freq.current:.0f} MHz")
+        
+        self.info_list.addItem("═══ Memory ═══")
+        self.info_list.addItem(f"  RAM: {mem.percent}% ({mem.used // (1024**3):.1f}GB / {mem.total // (1024**3):.1f}GB)")
+        self.info_list.addItem(f"  Available: {mem.available // (1024**3):.1f}GB")
+        self.info_list.addItem(f"  Swap: {swap.percent}% ({swap.used // (1024**3):.1f}GB / {swap.total // (1024**3):.1f}GB)")
+        
+        self.info_list.addItem("═══ Disk ═══")
+        self.info_list.addItem(f"  Usage: {disk.percent}%")
+        self.info_list.addItem(f"  Used: {disk.used // (1024**3):.1f}GB / {disk.total // (1024**3):.1f}GB")
+        self.info_list.addItem(f"  Free: {disk.free // (1024**3):.1f}GB")
+        
+        self.info_list.addItem("═══ Network ═══")
+        self.info_list.addItem(f"  Sent: {net.bytes_sent // (1024**2):.1f} MB")
+        self.info_list.addItem(f"  Received: {net.bytes_recv // (1024**2):.1f} MB")
+        
+        self.info_list.addItem("═══ System ═══")
+        self.info_list.addItem(f"  Platform: {sys.platform}")
+        self.info_list.addItem(f"  Python: {sys.version.split()[0]}")
+        self.info_list.addItem(f"  Uptime: {str(uptime).split('.')[0]}")
 
 
 class MediaPanel(QtWidgets.QWidget):
