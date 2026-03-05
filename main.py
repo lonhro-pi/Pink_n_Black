@@ -305,8 +305,14 @@ class TerminalWidget(QtWidgets.QWidget):
         self.cmd_input.returnPressed.connect(self.execute_command)
         self.cmd_input.installEventFilter(self)
 
+        self.enter_btn = QtWidgets.QPushButton("Enter ⏎")
+        self.enter_btn.setFixedHeight(38)
+        self.enter_btn.setCursor(QtCore.Qt.PointingHandCursor)
+        self.enter_btn.clicked.connect(self.execute_command)
+
         input_layout.addWidget(self.prompt)
         input_layout.addWidget(self.cmd_input, stretch=1)
+        input_layout.addWidget(self.enter_btn)
 
         layout.addWidget(self.output, stretch=1)
         layout.addWidget(input_container)
