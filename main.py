@@ -339,6 +339,9 @@ Type commands below. Special commands:
   exit       - Exit application
   help       - Show this message
 
+🤖 AI-POWERED: If a command fails, AI will automatically
+   suggest 2 alternative commands to try!
+
 """
         self.output.setPlainText(welcome)
 
@@ -448,17 +451,83 @@ Type commands below. Special commands:
                     QtCore.Qt.QueuedConnection,
                     QtCore.Q_ARG(str, output.rstrip())
                 )
+
+            if result.returncode != 0:
+                self._get_ai_alternatives(cmd, output)
+
         except subprocess.TimeoutExpired:
             QtCore.QMetaObject.invokeMethod(
                 self.output, "appendPlainText",
                 QtCore.Qt.QueuedConnection,
                 QtCore.Q_ARG(str, "Error: Command timed out after 60 seconds")
             )
+            self._get_ai_alternatives(cmd, "Command timed out")
         except Exception as e:
             QtCore.QMetaObject.invokeMethod(
                 self.output, "appendPlainText",
                 QtCore.Qt.QueuedConnection,
                 QtCore.Q_ARG(str, f"Error: {e}")
+            )
+            self._get_ai_alternatives(cmd, str(e))
+
+    def _get_ai_alternatives(self, failed_cmd, error_output):
+        try:
+            QtCore.QMetaObject.invokeMethod(
+                self.output, "appendPlainText",
+                QtCore.Qt.QueuedConnection,
+                QtCore.Q_ARG(str, "\n🤖 AI is generating alternative commands...")
+            )
+
+            prompt = f"""The following terminal command failed:
+Command: {failed_cmd}
+Error: {error_output[:500]}
+Working directory: {self.cwd}
+OS: {sys.platform}
+
+Please provide exactly 2 alternative commands that could accomplish the same task.
+Format your response EXACTLY like this:
+ALT1: <command here>
+ALT2: <command here>
+EXPLANATION: <brief explanation>
+
+Only provide working shell commands, no markdown or code blocks."""
+
+            if HAS_PUTER:
+                ai = AI()
+                response = ai.chat(prompt, model="gpt-4o-mini")
+                ai_response = response if isinstance(response, str) else str(response)
+            else:
+                r = requests.post(
+                    "https://api.puter.com/ai/chat",
+                    json={"message": prompt, "model": "gpt-4o-mini"},
+                    headers={"Content-Type": "application/json"},
+                    timeout=30
+                )
+                if r.status_code == 200:
+                    data = r.json()
+                    ai_response = data.get("response", data.get("message", str(data)))
+                else:
+                    ai_response = "Could not get AI suggestions"
+
+            suggestion_text = f"""
+┌─────────────────────────────────────────────────────────────┐
+│ 🤖 AI SUGGESTED ALTERNATIVES                                │
+├─────────────────────────────────────────────────────────────┤
+{ai_response}
+└─────────────────────────────────────────────────────────────┘
+💡 Copy and paste a command above to try it.
+"""
+            QtCore.QMetaObject.invokeMethod(
+                self.output, "appendPlainText",
+                QtCore.Qt.QueuedConnection,
+                QtCore.Q_ARG(str, suggestion_text)
+            )
+
+        except Exception as e:
+            QtCore.QMetaObject.invokeMethod(
+                self.output, "appendPlainText",
+                QtCore.Qt.QueuedConnection,
+                QtCore.Q_ARG(str, f"\n⚠️ Could not get AI suggestions: {e}")
             )
 
 
