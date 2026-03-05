@@ -19,8 +19,13 @@ except: HAS_QTERMWIDGET = False
 from PySide6.QtMultimedia import QMediaPlayer, QAudioOutput
 from PySide6.QtMultimediaWidgets import QVideoWidget
 
-# Constants & Paths
-BG, FG, ACCENT = "#000000", "#FFD6F5", "#FF1493"
+# Constants & Paths - Lonhro color scheme
+BG = "#1A0A14"           # Dark burgundy/purple background
+BG_DARKER = "#120810"    # Darker variant for inputs
+FG = "#FFFFFF"           # White text
+FG_MUTED = "#B0A0A8"     # Muted text for secondary content
+ACCENT = "#E91E8C"       # Hot pink accent
+ACCENT_HOVER = "#FF3399" # Brighter pink for hover states
 APP_DIR = Path.home() / ".pinkblack-terminal"
 APP_DIR.mkdir(parents=True, exist_ok=True)
 SESSION_FILE = APP_DIR / "session.json"
@@ -36,7 +41,7 @@ class TerminalWidget(QtWidgets.QWidget):
             layout.addWidget(self.term)
         else:
             self.output = QtWidgets.QPlainTextEdit(readOnly=True)
-            self.output.setStyleSheet("background-color: #0a0a0a; font-family: monospace;")
+            self.output.setStyleSheet(f"background-color: {BG_DARKER}; color: {FG}; font-family: 'Consolas', 'Monaco', monospace; font-size: 13px; border: 1px solid #3D2030; border-radius: 6px;")
             layout.addWidget(self.output)
             self._start_shell()
 
@@ -58,7 +63,10 @@ class ChatGPTPanel(QtWidgets.QWidget):
         self.history = QtWidgets.QPlainTextEdit(readOnly=True)
         self.input = QtWidgets.QLineEdit(placeholderText="Ask AI...")
         self.btn = QtWidgets.QPushButton("Send")
-        layout.addWidget(QtWidgets.QLabel("ChatGPT (gpt-4o-mini)"))
+        header = QtWidgets.QLabel("ChatGPT (gpt-4o-mini)")
+        header.setStyleSheet(f"background: #2D1520; color: {ACCENT}; padding: 8px 16px; border-radius: 20px; font-weight: bold;")
+        header.setAlignment(QtCore.Qt.AlignCenter)
+        layout.addWidget(header)
         layout.addWidget(self.history)
         layout.addWidget(self.input)
         layout.addWidget(self.btn)
@@ -171,7 +179,7 @@ class MediaPanel(QtWidgets.QWidget):
 class MainWindow(QtWidgets.QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Pink and Black Terminal")
+        self.setWindowTitle("LONHRO Terminal")
         self.resize(1200, 800)
         self.setup_ui()
         self.load_session()
@@ -202,7 +210,91 @@ class MainWindow(QtWidgets.QMainWindow):
         
         central = QtWidgets.QWidget(); central.setLayout(main_v)
         self.setCentralWidget(central)
-        self.setStyleSheet(f"QWidget {{ background: {BG}; color: {FG}; }} QPushButton {{ background: {ACCENT}; color: #000; }}")
+        self.setStyleSheet(f"""
+            QWidget {{
+                background: {BG};
+                color: {FG};
+                font-family: 'Segoe UI', Arial, sans-serif;
+            }}
+            QMainWindow {{
+                background: {BG};
+            }}
+            QPushButton {{
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 {ACCENT}, stop:1 #FF3399);
+                color: #FFFFFF;
+                border: none;
+                border-radius: 8px;
+                padding: 10px 20px;
+                font-weight: bold;
+            }}
+            QPushButton:hover {{
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #FF3399, stop:1 {ACCENT});
+            }}
+            QPushButton:disabled {{
+                background: #3D2030;
+                color: #666;
+            }}
+            QLineEdit, QPlainTextEdit, QListWidget {{
+                background: {BG_DARKER};
+                color: {FG};
+                border: 1px solid #3D2030;
+                border-radius: 6px;
+                padding: 8px;
+            }}
+            QLineEdit:focus, QPlainTextEdit:focus {{
+                border: 1px solid {ACCENT};
+            }}
+            QTabWidget::pane {{
+                background: {BG};
+                border: 1px solid #3D2030;
+                border-radius: 8px;
+            }}
+            QTabBar::tab {{
+                background: {BG_DARKER};
+                color: {FG_MUTED};
+                padding: 10px 20px;
+                border-top-left-radius: 6px;
+                border-top-right-radius: 6px;
+                margin-right: 2px;
+            }}
+            QTabBar::tab:selected {{
+                background: {ACCENT};
+                color: #FFFFFF;
+            }}
+            QLabel {{
+                color: {FG};
+            }}
+            QSlider::groove:horizontal {{
+                background: #3D2030;
+                height: 6px;
+                border-radius: 3px;
+            }}
+            QSlider::handle:horizontal {{
+                background: {ACCENT};
+                width: 16px;
+                margin: -5px 0;
+                border-radius: 8px;
+            }}
+            QSlider::sub-page:horizontal {{
+                background: {ACCENT};
+                border-radius: 3px;
+            }}
+            QSplitter::handle {{
+                background: #3D2030;
+            }}
+            QScrollBar:vertical {{
+                background: {BG_DARKER};
+                width: 10px;
+                border-radius: 5px;
+            }}
+            QScrollBar::handle:vertical {{
+                background: #3D2030;
+                border-radius: 5px;
+            }}
+            QScrollBar::handle:vertical:hover {{
+                background: {ACCENT};
+            }}
+        """)
         
         self.save_btn.clicked.connect(self.save_session)
         self.kill_btn.clicked.connect(self.kill_desktop)
