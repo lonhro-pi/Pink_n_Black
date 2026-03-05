@@ -16,16 +16,8 @@ try:
     HAS_QTERMWIDGET = True
 except: HAS_QTERMWIDGET = False
 
-HAS_VLC = False
-try:
-    import vlc
-    # Test that libvlc is actually available by creating an instance
-    _test_instance = vlc.Instance()
-    if _test_instance:
-        HAS_VLC = True
-        del _test_instance
-except:
-    HAS_VLC = False
+from PySide6.QtMultimedia import QMediaPlayer, QAudioOutput
+from PySide6.QtMultimediaWidgets import QVideoWidget
 
 # Constants & Paths
 BG, FG, ACCENT = "#000000", "#FFD6F5", "#FF1493"
@@ -92,42 +84,89 @@ class ChatGPTPanel(QtWidgets.QWidget):
         except Exception as e:
             QtCore.QMetaObject.invokeMethod(self.history, "appendPlainText", QtCore.Qt.QueuedConnection, QtCore.Q_ARG(str, f"Error: {e}"))
 
-class VLCPanel(QtWidgets.QWidget):
+class MediaPanel(QtWidgets.QWidget):
     def __init__(self):
         super().__init__()
-        l = QtWidgets.QVBoxLayout(self)
-        self.open_btn = QtWidgets.QPushButton("Open File")
-        self.play_btn = QtWidgets.QPushButton("Play/Pause")
-        self.cam_btn = QtWidgets.QPushButton("Webcam View")
-        l.addWidget(self.open_btn); l.addWidget(self.play_btn); l.addWidget(self.cam_btn)
-        self.player = None
-        self.instance = vlc.Instance() if HAS_VLC else None
-        self.open_btn.clicked.connect(self.open_file)
-        self.play_btn.clicked.connect(self.toggle)
-        self.cam_btn.clicked.connect(self.webcam)
+        layout = QtWidgets.QVBoxLayout(self)
         
-        if not HAS_VLC:
-            self.open_btn.setEnabled(False)
-            self.play_btn.setEnabled(False)
-            self.cam_btn.setEnabled(False)
-            l.addWidget(QtWidgets.QLabel("VLC not available. Install python-vlc and VLC."))
+        self.video_widget = QVideoWidget()
+        self.video_widget.setMinimumHeight(200)
+        layout.addWidget(self.video_widget)
+        
+        self.player = QMediaPlayer()
+        self.audio_output = QAudioOutput()
+        self.player.setAudioOutput(self.audio_output)
+        self.player.setVideoOutput(self.video_widget)
+        
+        controls = QtWidgets.QHBoxLayout()
+        self.open_btn = QtWidgets.QPushButton("Open File")
+        self.play_btn = QtWidgets.QPushButton("Play")
+        self.stop_btn = QtWidgets.QPushButton("Stop")
+        controls.addWidget(self.open_btn)
+        controls.addWidget(self.play_btn)
+        controls.addWidget(self.stop_btn)
+        layout.addLayout(controls)
+        
+        self.slider = QtWidgets.QSlider(QtCore.Qt.Horizontal)
+        layout.addWidget(self.slider)
+        
+        self.volume_layout = QtWidgets.QHBoxLayout()
+        self.volume_label = QtWidgets.QLabel("Volume:")
+        self.volume_slider = QtWidgets.QSlider(QtCore.Qt.Horizontal)
+        self.volume_slider.setRange(0, 100)
+        self.volume_slider.setValue(50)
+        self.volume_layout.addWidget(self.volume_label)
+        self.volume_layout.addWidget(self.volume_slider)
+        layout.addLayout(self.volume_layout)
+        
+        self.open_btn.clicked.connect(self.open_file)
+        self.play_btn.clicked.connect(self.toggle_play)
+        self.stop_btn.clicked.connect(self.stop)
+        self.volume_slider.valueChanged.connect(self.set_volume)
+        self.player.positionChanged.connect(self.update_position)
+        self.player.durationChanged.connect(self.update_duration)
+        self.slider.sliderMoved.connect(self.seek)
+        self.player.playbackStateChanged.connect(self.update_button)
+        
+        self.audio_output.setVolume(0.5)
 
     def open_file(self):
-        if not self.instance:
-            return
-        path, _ = QtWidgets.QFileDialog.getOpenFileName(self, "Select Media")
-        if path: self.player = self.instance.media_player_new(path)
-
-    def toggle(self):
-        if self.player:
-            if self.player.is_playing(): self.player.pause()
-            else: self.player.play()
-
-    def webcam(self):
-        if self.instance:
-            self.player = self.instance.media_player_new()
-            self.player.set_mrl("v4l2:///dev/video0")
+        path, _ = QtWidgets.QFileDialog.getOpenFileName(
+            self, "Select Media", "", 
+            "Media Files (*.mp4 *.mp3 *.wav *.avi *.mkv *.webm *.ogg *.flac);;All Files (*)"
+        )
+        if path:
+            self.player.setSource(QtCore.QUrl.fromLocalFile(path))
             self.player.play()
+
+    def toggle_play(self):
+        if self.player.playbackState() == QMediaPlayer.PlayingState:
+            self.player.pause()
+        else:
+            self.player.play()
+
+    def stop(self):
+        self.player.stop()
+
+    def set_volume(self, value):
+        self.audio_output.setVolume(value / 100.0)
+
+    def update_position(self, position):
+        self.slider.blockSignals(True)
+        self.slider.setValue(position)
+        self.slider.blockSignals(False)
+
+    def update_duration(self, duration):
+        self.slider.setRange(0, duration)
+
+    def seek(self, position):
+        self.player.setPosition(position)
+
+    def update_button(self, state):
+        if state == QMediaPlayer.PlayingState:
+            self.play_btn.setText("Pause")
+        else:
+            self.play_btn.setText("Play")
 
 class MainWindow(QtWidgets.QMainWindow):
     def __init__(self):
@@ -141,7 +180,7 @@ class MainWindow(QtWidgets.QMainWindow):
         splitter = QtWidgets.QSplitter(QtCore.Qt.Horizontal)
         tabs = QtWidgets.QTabWidget()
         tabs.addTab(ChatGPTPanel(), "AI")
-        tabs.addTab(VLCPanel(), "Media")
+        tabs.addTab(MediaPanel(), "Media")
         
         # GitHub & System Panels
         self.gh = QtWidgets.QListWidget()
